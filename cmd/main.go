@@ -1,41 +1,75 @@
 package main
 
 import (
-	"fmt"
+	"database/sql"
 	"os"
+	"pingerbot/internal/handlers"
+	"pingerbot/internal/state"
 	"pingerbot/pkg/telegram"
 	"time"
+
+	"github.com/sirupsen/logrus"
+
+	_ "github.com/lib/pq"
 )
 
-func parseConfig() telegram.BotConfig {
+type StorageConfig struct {
+	Url string
+}
+
+type AppConfig struct {
+	Bot     telegram.BotConfig
+	Storage StorageConfig
+}
+
+func parseConfig() AppConfig {
 	token := os.Getenv("BOT_TOKEN")
 
-	interval, err := time.ParseDuration(os.Getenv("POLLING_INTERVAL_MS"))
+	timeout, err := time.ParseDuration(os.Getenv("LONG_POLLING_TIMEOUT"))
 	if err != nil {
 		panic(err)
 	}
 
-	return telegram.BotConfig{
-		Token:    token,
-		Interval: interval,
+	connstr := os.Getenv("DB_CONNECTION")
+
+	return AppConfig{
+		Bot: telegram.BotConfig{
+			Token:   token,
+			Timeout: timeout,
+		},
+		Storage: StorageConfig{
+			Url: connstr,
+		},
 	}
 }
 
-/*
-	Предположим, что порядок обработки апдейтов не важен.
-	У нас есть очередь обработки апдейтов.
-	И есть текущий оффсет до которого все апдейти обработаны.
-	Оффсет должен быть равен минимальному значению в очереди.
-
-	GetUpdates возвращает буферизированный канал из которого выпрыгивают апдейты
-*/
+func configureLogger() {
+	logrus.SetLevel(logrus.DebugLevel)
+}
 
 func main() {
+	configureLogger()
+
 	config := parseConfig()
 
-	bot := telegram.NewBot(config, func(u telegram.Update) {
-		fmt.Printf("Handling update:\n%+v\n", u)
-	})
+	bot := telegram.NewBot(config.Bot)
+
+	db, err := sql.Open("postgres", config.Storage.Url)
+	if err != nil {
+		panic(err)
+	}
+
+	defer db.Close()
+	db.SetMaxOpenConns(10)
+
+	state := state.New(db)
+
+	bot.AddHandler(handlers.BotJoinsGroup{S: state})
+	bot.AddHandler(handlers.BotLeavesGroup{S: state})
+	bot.AddHandler(handlers.UserJoinsGroup{S: state})
+	bot.AddHandler(handlers.UserLeavesGroup{S: state})
+	bot.AddHandler(handlers.BotHearsPrivateMessage{S: state})
+	bot.AddHandler(handlers.BotHearsPublicMessage{S: state})
 
 	bot.Start()
 }
