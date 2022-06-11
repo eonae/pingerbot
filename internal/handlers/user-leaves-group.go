@@ -3,7 +3,7 @@ package handlers
 import (
 	"fmt"
 	"pingerbot/internal/state"
-	"pingerbot/pkg/telegram"
+	tg "pingerbot/pkg/telegram"
 )
 
 type UserLeavesGroup struct {
@@ -14,11 +14,11 @@ func (UserLeavesGroup) Name() string {
 	return "UserJoinsGroup"
 }
 
-func (UserLeavesGroup) Match(u telegram.Update) bool {
+func (UserLeavesGroup) Match(u tg.Update) bool {
 	return u.Message != nil && u.Message.LeftMember != nil
 }
 
-func (h UserLeavesGroup) Handle(u telegram.Update, ctx telegram.Ctx) error {
+func (h UserLeavesGroup) Handle(u tg.Update, ctx tg.Ctx) error {
 	err := h.S.ForgetMember(u.Message.Chat.Id, *u.Message.LeftMember)
 	if err != nil {
 		return err
@@ -29,7 +29,7 @@ func (h UserLeavesGroup) Handle(u telegram.Update, ctx telegram.Ctx) error {
 		name = u.Message.LeftMember.FirstName
 	}
 
-	msg := telegram.SendMessage{
+	msg := tg.OutgoingMessage{
 		ChatId: u.Message.Chat.Id,
 		Text:   fmt.Sprintf("Farewell, mr. %s!", name),
 	}

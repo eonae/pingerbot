@@ -2,8 +2,9 @@ package handlers
 
 import (
 	"fmt"
+	"pingerbot/internal/messages"
 	"pingerbot/internal/state"
-	"pingerbot/pkg/telegram"
+	tg "pingerbot/pkg/telegram"
 )
 
 type UserJoinsGroup struct {
@@ -14,11 +15,11 @@ func (UserJoinsGroup) Name() string {
 	return "UserJoinsGroup"
 }
 
-func (UserJoinsGroup) Match(u telegram.Update) bool {
+func (UserJoinsGroup) Match(u tg.Update) bool {
 	return u.Message != nil && u.Message.NewMember != nil
 }
 
-func (h UserJoinsGroup) Handle(u telegram.Update, ctx telegram.Ctx) error {
+func (h UserJoinsGroup) Handle(u tg.Update, ctx tg.Ctx) error {
 	if u.Message.NewMember.Id == ctx.BotId {
 		ctx.Logger.Debug("Skipping message about self")
 		return nil
@@ -27,16 +28,7 @@ func (h UserJoinsGroup) Handle(u telegram.Update, ctx telegram.Ctx) error {
 	// We don't work with users that don't have username because
 	// there is no way to mention them.
 	if u.Message.NewMember.Username == "" {
-		msg := telegram.SendMessage{
-			ChatId:    u.Message.Chat.Id,
-			ParseMode: telegram.Markdown,
-			Text: fmt.Sprintf(
-				"I can't ping users without username mr.[%s](tg://user?id=%d). Please setup yours!",
-				u.Message.NewMember.FirstName,
-				u.Message.NewMember.Id,
-			),
-		}
-
+		msg := messages.AddUsername(u.Message.Chat.Id, *u.Message.NewMember)
 		_, err := ctx.Actions.SendMessage(msg)
 
 		return err
@@ -47,7 +39,7 @@ func (h UserJoinsGroup) Handle(u telegram.Update, ctx telegram.Ctx) error {
 		return err
 	}
 
-	msg := telegram.SendMessage{
+	msg := tg.OutgoingMessage{
 		ChatId: u.Message.Chat.Id,
 		Text:   fmt.Sprintf("Hi @%s! I know you now!", u.Message.NewMember.Username),
 	}

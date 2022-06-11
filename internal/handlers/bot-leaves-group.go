@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"pingerbot/internal/state"
-	"pingerbot/pkg/telegram"
+	tg "pingerbot/pkg/telegram"
 )
 
 type BotLeavesGroup struct {
@@ -13,10 +13,10 @@ func (BotLeavesGroup) Name() string {
 	return "BotLeavesGroup"
 }
 
-func (BotLeavesGroup) Match(u telegram.Update) bool {
+func (BotLeavesGroup) Match(u tg.Update) bool {
 	return u.MyChatMember != nil && u.MyChatMember.NewChatMember.Status == "left"
 }
 
-func (h BotLeavesGroup) Handle(u telegram.Update, ctx telegram.Ctx) error {
+func (h BotLeavesGroup) Handle(u tg.Update, ctx tg.Ctx) error {
 	return h.S.ForgetGroup(u.MyChatMember.Chat)
 }

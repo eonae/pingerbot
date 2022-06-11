@@ -1,9 +1,9 @@
 package handlers
 
 import (
-	"fmt"
+	"pingerbot/internal/messages"
 	"pingerbot/internal/state"
-	"pingerbot/pkg/telegram"
+	tg "pingerbot/pkg/telegram"
 )
 
 type BotJoinsGroup struct {
@@ -14,19 +14,19 @@ func (BotJoinsGroup) Name() string {
 	return "BotJoinsGroup"
 }
 
-func (BotJoinsGroup) Match(u telegram.Update) bool {
+func (BotJoinsGroup) Match(u tg.Update) bool {
 	return u.MyChatMember != nil && u.MyChatMember.NewChatMember.Status != "left"
 }
 
-func (h BotJoinsGroup) Handle(u telegram.Update, ctx telegram.Ctx) (err error) {
+func (h BotJoinsGroup) Handle(u tg.Update, ctx tg.Ctx) (err error) {
 	err = h.S.RememberGroup(u.MyChatMember.Chat)
 	if err != nil {
 		return err
 	}
 
-	msg := telegram.SendMessage{
+	msg := tg.OutgoingMessage{
 		ChatId:    u.MyChatMember.Chat.Id,
-		ParseMode: telegram.Markdown,
+		ParseMode: tg.Markdown,
 		Text: `Hi all!
 
 I'm mr.Pinger! If you put **/ping** into you message, i will notify everyone.
@@ -40,16 +40,7 @@ _Please note. I don't know people in this chat yet. But I remember everyone who 
 	}
 
 	if u.MyChatMember.From.Username == "" {
-		msg := telegram.SendMessage{
-			ChatId:    u.MyChatMember.Chat.Id,
-			ParseMode: telegram.Markdown,
-			Text: fmt.Sprintf(
-				"I can't ping users without username mr.[%s](tg://user?id=%d). Please setup yours!",
-				u.MyChatMember.From.FirstName,
-				u.MyChatMember.From.Id,
-			),
-		}
-
+		msg := messages.AddUsername(u.MyChatMember.Chat.Id, u.MyChatMember.From)
 		_, err = ctx.Actions.SendMessage(msg)
 
 		return err

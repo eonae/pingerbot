@@ -22,12 +22,12 @@ type Entity struct {
 	Type   string `json:"type"`
 }
 
-type Message struct {
+type IncomingMessage struct {
 	Chat            Chat
 	Date            int `json:"date"`
 	Entities        []Entity
 	From            User
-	MessageId       int    `json:"message_id"`
+	Id              int    `json:"message_id"`
 	Text            string `json:"text"`
 	NewMember       *User  `json:"new_chat_member,omitempty"`
 	NewParticipant  *User  `json:"new_chat_participant,omitempty"`
@@ -50,10 +50,10 @@ type JoinLeave struct {
 }
 
 type Update struct {
-	UpdateId      int64      `json:"update_id"`
-	Message       *Message   `json:"message,omitempty"`        // Optional
-	EditedMessage *Message   `json:"edited_message,omitempty"` // Optional
-	MyChatMember  *JoinLeave `json:"my_chat_member,omitempty"` // Optional
+	UpdateId      int64            `json:"update_id"`
+	Message       *IncomingMessage `json:"message,omitempty"`        // Optional
+	EditedMessage *IncomingMessage `json:"edited_message,omitempty"` // Optional
+	MyChatMember  *JoinLeave       `json:"my_chat_member,omitempty"` // Optional
 }
 
 type Me struct {
@@ -65,7 +65,7 @@ type Me struct {
 	Username                string `json:"username"`
 }
 
-type SendMessage struct {
+type OutgoingMessage struct {
 	ChatId         int64       `json:"chat_id"`
 	Text           string      `json:"text"`
 	ParseMode      string      `json:"parse_mode,omitempty"`
@@ -73,4 +73,10 @@ type SendMessage struct {
 	ProtectContent bool        `json:"protect_content,omitempty"`
 	ReplyTo        int         `json:"reply_to_message_id,omitempty"`
 	ReplyMarkup    interface{} `json:"reply_markup,omitempty"`
+}
+
+func NewReply(to IncomingMessage, msg OutgoingMessage) OutgoingMessage {
+	msg.ChatId = to.Chat.Id
+	msg.ReplyTo = to.Id
+	return msg
 }

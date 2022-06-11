@@ -78,7 +78,7 @@ func (t Api) GetUpdates(offset int64, timeout time.Duration) (updates []Update, 
 	return
 }
 
-func (t Api) SendMessage(command SendMessage) (message Message, err error) {
+func (t Api) SendMessage(command OutgoingMessage) (message IncomingMessage, err error) {
 	err = t.sendRequest(tgRequest{
 		Method: "POST",
 		Path:   "sendMessage",

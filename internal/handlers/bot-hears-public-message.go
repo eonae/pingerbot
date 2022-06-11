@@ -1,9 +1,9 @@
 package handlers
 
 import (
-	"fmt"
+	"pingerbot/internal/messages"
 	"pingerbot/internal/state"
-	"pingerbot/pkg/telegram"
+	tg "pingerbot/pkg/telegram"
 	"strings"
 )
 
@@ -15,11 +15,11 @@ func (BotHearsPublicMessage) Name() string {
 	return "BotHearsPublicMessage"
 }
 
-func (BotHearsPublicMessage) Match(u telegram.Update) bool {
+func (BotHearsPublicMessage) Match(u tg.Update) bool {
 	return u.Message != nil && u.Message.Chat.Type != "private"
 }
 
-func (h BotHearsPublicMessage) Handle(u telegram.Update, ctx telegram.Ctx) error {
+func (h BotHearsPublicMessage) Handle(u tg.Update, ctx tg.Ctx) error {
 	if u.Message.From.Id == ctx.BotId {
 		ctx.Logger.Debug("Skipping message from self")
 		return nil
@@ -30,12 +30,7 @@ func (h BotHearsPublicMessage) Handle(u telegram.Update, ctx telegram.Ctx) error
 	// We don't work with users that don't have username because
 	// there is no way to mention them.
 	if u.Message.From.Username == "" {
-		msg := telegram.SendMessage{
-			ChatId:    u.Message.Chat.Id,
-			ParseMode: telegram.Markdown,
-			Text:      fmt.Sprintf("I can't ping users without username mr.%s. Please setup yours!", u.Message.From.FirstName),
-		}
-
+		msg := messages.AddUsername(u.Message.Chat.Id, u.Message.From)
 		_, err := ctx.Actions.SendMessage(msg)
 
 		return err
@@ -64,21 +59,17 @@ func (h BotHearsPublicMessage) Handle(u telegram.Update, ctx telegram.Ctx) error
 					mentions = append(mentions, "@"+username)
 				}
 
-				_, err = ctx.Actions.SendMessage(telegram.SendMessage{
-					ChatId:  groupId,
-					ReplyTo: u.Message.MessageId,
-					Text:    strings.Join(mentions, " "),
-				})
+				_, err = ctx.Actions.SendMessage(tg.NewReply(*u.Message, tg.OutgoingMessage{
+					Text: strings.Join(mentions, " "),
+				}))
 				return err
 			}
 		case "mention":
 			username := u.Message.Text[e.Offset : e.Offset+e.Length]
 			if username == ctx.BotName {
-				_, err := ctx.Actions.SendMessage(telegram.SendMessage{
-					ChatId:  u.Message.Chat.Id,
-					Text:    "You can talk to me in private if you want.",
-					ReplyTo: u.Message.MessageId,
-				})
+				_, err := ctx.Actions.SendMessage(tg.NewReply(*u.Message, tg.OutgoingMessage{
+					Text: "You can talk to me in private if you want.",
+				}))
 				return err
 			}
 		}
