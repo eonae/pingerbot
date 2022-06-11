@@ -24,6 +24,24 @@ func (h UserJoinsGroup) Handle(u telegram.Update, ctx telegram.Ctx) error {
 		return nil
 	}
 
+	// We don't work with users that don't have username because
+	// there is no way to mention them.
+	if u.Message.NewMember.Username == "" {
+		msg := telegram.SendMessage{
+			ChatId:    u.Message.Chat.Id,
+			ParseMode: telegram.Markdown,
+			Text: fmt.Sprintf(
+				"I can't ping users without username mr.[%s](tg://user?id=%d). Please setup yours!",
+				u.Message.NewMember.FirstName,
+				u.Message.NewMember.Id,
+			),
+		}
+
+		_, err := ctx.Actions.SendMessage(msg)
+
+		return err
+	}
+
 	err := h.S.RememberMember(u.Message.Chat.Id, *u.Message.NewMember)
 	if err != nil {
 		return err

@@ -24,10 +24,14 @@ func (h UserLeavesGroup) Handle(u telegram.Update, ctx telegram.Ctx) error {
 		return err
 	}
 
+	name := u.Message.LeftMember.Username
+	if name == "" {
+		name = u.Message.LeftMember.FirstName
+	}
+
 	msg := telegram.SendMessage{
-		ChatId:    u.Message.Chat.Id,
-		ParseMode: "Markdown",
-		Text:      fmt.Sprintf("Farewell, mr %s!", u.Message.LeftMember.Username),
+		ChatId: u.Message.Chat.Id,
+		Text:   fmt.Sprintf("Farewell, mr. %s!", name),
 	}
 
 	_, err = ctx.Actions.SendMessage(msg)

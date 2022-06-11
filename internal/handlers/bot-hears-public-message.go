@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"pingerbot/internal/state"
 	"pingerbot/pkg/telegram"
 	"strings"
@@ -19,18 +20,26 @@ func (BotHearsPublicMessage) Match(u telegram.Update) bool {
 }
 
 func (h BotHearsPublicMessage) Handle(u telegram.Update, ctx telegram.Ctx) error {
-	// Если сообщение от самого бота - пропустить
-	// Если сообщение в приват - ответить, что пока не умеет разговаривать
-	// Если сообщение содержит команду /ping - пингануть (пока фейково)
-	// Если сообщение содержит упоминание бота - ответить
-	// Иначе - пропустить
-
 	if u.Message.From.Id == ctx.BotId {
 		ctx.Logger.Debug("Skipping message from self")
 		return nil
 	}
 
 	groupId := u.Message.Chat.Id
+
+	// We don't work with users that don't have username because
+	// there is no way to mention them.
+	if u.Message.From.Username == "" {
+		msg := telegram.SendMessage{
+			ChatId:    u.Message.Chat.Id,
+			ParseMode: telegram.Markdown,
+			Text:      fmt.Sprintf("I can't ping users without username mr.%s. Please setup yours!", u.Message.From.FirstName),
+		}
+
+		_, err := ctx.Actions.SendMessage(msg)
+
+		return err
+	}
 
 	ctx.Logger.Debugf("Remembering user @%s", u.Message.From.Username)
 	err := h.S.RememberMember(groupId, u.Message.From)
@@ -51,8 +60,8 @@ func (h BotHearsPublicMessage) Handle(u telegram.Update, ctx telegram.Ctx) error
 
 				mentions := make([]string, 0)
 
-				for _, member := range members {
-					mentions = append(mentions, "@"+member.Name)
+				for _, username := range members {
+					mentions = append(mentions, "@"+username)
 				}
 
 				_, err = ctx.Actions.SendMessage(telegram.SendMessage{

@@ -6,11 +6,6 @@ import (
 	"pingerbot/pkg/telegram"
 )
 
-type Member struct {
-	Id   string // Because these could be really bit integers and pq seems to not support them
-	Name string
-}
-
 type State struct {
 	db *sql.DB
 }
@@ -25,7 +20,7 @@ func New(db *sql.DB) State {
 }
 
 func (s *State) groupExists(groupId int64) (bool, error) {
-	rows, err := s.db.Query(`SELECT id FROM pingerbot.groups WHERE id = $1 LIMIT 1`, groupId)
+	rows, err := s.db.Query(`SELECT id FROM groups WHERE id = $1 LIMIT 1`, groupId)
 	if err != nil {
 		return false, err
 	}
@@ -40,11 +35,12 @@ func (s *State) RememberGroup(c telegram.Chat) (err error) {
 	if err != nil {
 		return err
 	}
+
 	if exists {
 		return DuplicateGroup
 	}
 
-	_, err = s.db.Exec(`INSERT INTO pingerbot.groups (id, name) VALUES ($1, $2)`, c.Id, c.Title)
+	_, err = s.db.Exec(`INSERT INTO groups (id, name) VALUES ($1, $2)`, c.Id, c.Title)
 	if err == sql.ErrNoRows {
 		return nil
 	}
@@ -53,12 +49,7 @@ func (s *State) RememberGroup(c telegram.Chat) (err error) {
 }
 
 func (s *State) ForgetGroup(c telegram.Chat) (err error) {
-	_, err = s.db.Exec(`DELETE FROM pingerbot.members WHERE group_id = $1`, c.Id)
-	if err == sql.ErrNoRows {
-		return nil
-	}
-
-	_, err = s.db.Exec(`DELETE FROM pingerbot.groups WHERE id = $1`, c.Id)
+	_, err = s.db.Exec(`DELETE FROM groups WHERE id = $1`, c.Id)
 	if err == sql.ErrNoRows {
 		return nil
 	}
@@ -77,9 +68,9 @@ func (s *State) RememberMember(groupId int64, u telegram.User) (err error) {
 	}
 
 	_, err = s.db.Exec(`
-		INSERT INTO pingerbot.members (id, name, group_id) VALUES ($1, $2, $3)
-		ON CONFLICT (id, group_id) DO UPDATE SET name = $2
-	`, u.Id, u.Username, groupId)
+		INSERT INTO members (username, group_id) VALUES ($1, $2)
+		ON CONFLICT DO NOTHING
+	`, u.Username, groupId)
 	if err == sql.ErrNoRows {
 		return nil
 	}
@@ -88,7 +79,7 @@ func (s *State) RememberMember(groupId int64, u telegram.User) (err error) {
 }
 
 func (s *State) ForgetMember(groupId int64, u telegram.User) (err error) {
-	_, err = s.db.Exec(`DELETE FROM pingerbot.members WHERE id = $1 AND group_id = $2`, u.Id, groupId)
+	_, err = s.db.Exec(`DELETE FROM members WHERE username = $1 AND group_id = $2`, u.Username, groupId)
 	if err == sql.ErrNoRows {
 		return nil
 	}
@@ -96,7 +87,7 @@ func (s *State) ForgetMember(groupId int64, u telegram.User) (err error) {
 	return err
 }
 
-func (s State) GetKnownMembers(groupId int64) ([]Member, error) {
+func (s State) GetKnownMembers(groupId int64) ([]string, error) {
 	exists, err := s.groupExists(groupId)
 	if err != nil {
 		return nil, err
@@ -106,20 +97,20 @@ func (s State) GetKnownMembers(groupId int64) ([]Member, error) {
 		return nil, GroupNotFound
 	}
 
-	rows, err := s.db.Query(`SELECT id, name FROM pingerbot.members WHERE group_id = $1`, groupId)
+	rows, err := s.db.Query(`SELECT username FROM members WHERE group_id = $1`, groupId)
 	if err != nil {
 		return nil, err
 	}
 
-	members := make([]Member, 0)
+	members := make([]string, 0)
 
 	for rows.Next() {
-		var u Member
-		err := rows.Scan(&u.Id, &u.Name)
+		var username string
+		err := rows.Scan(&username)
 		if err != nil {
 			return nil, err
 		}
-		members = append(members, u)
+		members = append(members, username)
 	}
 
 	return members, nil
