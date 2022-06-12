@@ -1,4 +1,4 @@
-DROP IF EXISTS TABLE "members"
+DROP TABLE IF EXISTS "members"
 
 CREATE TABLE "members" (
 	"id" varchar,

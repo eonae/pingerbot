@@ -19,7 +19,7 @@ func (h BotHearsPublicCommand) Handle(ctx tg.CommandCtx) error {
 
 	switch ctx.Command {
 	case "/ping":
-		members, err := h.S.GetKnownMembers(ctx.ChatId)
+		members, err := h.S.GetKnownMembers(ctx.ChatId, ctx.Tags())
 		if err != nil {
 			return err
 		}
@@ -30,7 +30,7 @@ func (h BotHearsPublicCommand) Handle(ctx tg.CommandCtx) error {
 
 		return ctx.Reply(tg.OutgoingMessage{Text: strings.Join(members, " ")})
 	case "/add":
-		mentions := ctx.Mentions()
+		mentions, tags := ctx.Mentions(), ctx.Tags()
 
 		if len(mentions) == 0 {
 			return ctx.Reply(tg.OutgoingMessage{Text: "Please provide some usernames!"})
@@ -46,13 +46,13 @@ func (h BotHearsPublicCommand) Handle(ctx tg.CommandCtx) error {
 			ctx.Logger.Infof("Remembering user %s", mention)
 
 			// Strip @ because it will be added inside of RememberMember method
-			err := h.S.RememberMember(ctx.ChatId, mention[1:])
+			err := h.S.RememberMember(ctx.ChatId, mention[1:], tags)
 			if err != nil {
 				ctx.Logger.Error(err)
 			}
 		}
 	case "/remove":
-		mentions := ctx.Mentions()
+		mentions, tags := ctx.Mentions(), ctx.Tags()
 
 		if len(mentions) == 0 {
 			return ctx.Reply(tg.OutgoingMessage{Text: "Please provide some usernames!"})
@@ -61,15 +61,15 @@ func (h BotHearsPublicCommand) Handle(ctx tg.CommandCtx) error {
 		for _, mention := range mentions {
 			ctx.Logger.Infof("Forgetting user %s", mention)
 
-			err := h.S.ForgetMember(ctx.ChatId, mention)
+			err := h.S.ForgetMember(ctx.ChatId, mention, tags)
 			if err != nil {
 				ctx.Logger.Error(err)
 			}
 		}
 	case "/addme":
-		return rememberIfHasUsername(ctx.ChatId, ctx.Message.From, h.S, ctx.Logger, ctx)
+		return rememberIfHasUsername(ctx.ChatId, ctx.Message.From, h.S, ctx.Logger, ctx, ctx.Tags())
 	case "/removeme":
-		return h.S.ForgetMember(ctx.ChatId, "@"+ctx.Message.From.Username)
+		return h.S.ForgetMember(ctx.ChatId, "@"+ctx.Message.From.Username, ctx.Tags())
 	default:
 		ctx.Logger.Warnf("Unknown command: %s", ctx.Command)
 	}

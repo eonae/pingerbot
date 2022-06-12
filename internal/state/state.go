@@ -2,8 +2,10 @@ package state
 
 import (
 	"database/sql"
+	"fmt"
 	"pingerbot/pkg/helpers"
 	"pingerbot/pkg/telegram"
+	"strings"
 )
 
 // Represents bot's memory
@@ -49,7 +51,7 @@ func (s *State) ForgetGroup(c telegram.Chat) (err error) {
 
 // Remember that user is member of specified group
 // Note that method is idempotent
-func (s *State) RememberMember(groupId int64, username string) (err error) {
+func (s *State) RememberMember(groupId int64, username string, tags []string) (err error) {
 	exists, err := s.groupExists(groupId)
 	if err != nil {
 		return err
@@ -59,25 +61,66 @@ func (s *State) RememberMember(groupId int64, username string) (err error) {
 		return GroupNotFoundErr
 	}
 
-	_, err = s.db.Exec(`
-		INSERT INTO members (username, group_id) VALUES ($1, $2)
-		ON CONFLICT DO NOTHING
-	`, "@"+username, groupId)
-	if err == sql.ErrNoRows {
-		return nil
+	if len(tags) == 0 {
+		_, err = s.db.Exec(`
+			INSERT INTO members (group_id, username, tag) VALUES ($1, $2, $3)
+			ON CONFLICT DO NOTHING
+		`, groupId, "@"+username, "-")
+
+		return err
 	}
+
+	i := 0
+	values := make([]string, 0, len(tags))
+	parameters := make([]interface{}, 0, len(tags)*3)
+
+	for _, tag := range tags {
+		values = append(values, fmt.Sprintf("($%d, $%d, $%d)", i+1, i+2, i+3))
+		i += 3
+		parameters = append(parameters, groupId, "@"+username, tag)
+	}
+
+	query := fmt.Sprintf(`
+		INSERT INTO members (group_id, username, tag) VALUES %s
+		ON CONFLICT DO NOTHING
+	`, strings.Join(values, ", "))
+
+	fmt.Println(query, parameters)
+
+	_, err = s.db.Exec(query, parameters...)
 
 	return err
 }
 
 // Forget member. Is used when user
-func (s *State) ForgetMember(groupId int64, username string) (err error) {
-	_, err = s.db.Exec(`DELETE FROM members WHERE username = $1 AND group_id = $2`, username, groupId)
+func (s *State) ForgetMember(groupId int64, username string, tags []string) (err error) {
+	if len(tags) == 0 {
+		_, err = s.db.Exec(`DELETE FROM members WHERE username = $1 AND group_id = $2 AND tag = $3`, username, groupId, "-")
+
+		return err
+	}
+
+	i := 2
+	placeholders := make([]string, 0, len(tags))
+	parameters := []interface{}{username, groupId}
+	for _, tag := range tags {
+		i++
+		placeholders = append(placeholders, fmt.Sprintf("$%d", i))
+		parameters = append(parameters, tag)
+	}
+
+	_, err = s.db.Exec(
+		fmt.Sprintf(
+			`DELETE FROM members WHERE username = $1 AND group_id = $2 AND tag IN (%s)`,
+			strings.Join(placeholders, ", "),
+		),
+		parameters...,
+	)
 
 	return err
 }
 
-func (s State) GetKnownMembers(groupId int64) ([]string, error) {
+func (s State) GetKnownMembers(groupId int64, tags []string) ([]string, error) {
 	exists, err := s.groupExists(groupId)
 	if err != nil {
 		return nil, err
@@ -87,7 +130,33 @@ func (s State) GetKnownMembers(groupId int64) ([]string, error) {
 		return nil, GroupNotFoundErr
 	}
 
-	rows, err := s.db.Query(`SELECT username FROM members WHERE group_id = $1`, groupId)
+	var query string
+	var parameters []interface{}
+
+	if len(tags) == 0 {
+		query = `SELECT username FROM members WHERE group_id = $1 AND tag = $2`
+		parameters = []interface{}{groupId, "-"}
+	} else {
+		placeholders := make([]string, 0, len(tags))
+		i := 1
+		for range tags {
+			i++
+			placeholders = append(placeholders, fmt.Sprintf("$%d", i))
+		}
+		query = fmt.Sprintf(
+			`SELECT username FROM members WHERE group_id = $1 AND tag IN (%s)`,
+			strings.Join(placeholders, ", "),
+		)
+		parameters = make([]interface{}, 0, len(tags)+1)
+		parameters = append(parameters, groupId)
+		for _, tag := range tags {
+			parameters = append(parameters, tag)
+		}
+	}
+
+	fmt.Println(query, parameters)
+
+	rows, err := s.db.Query(query, parameters...)
 	if err != nil {
 		return nil, err
 	}

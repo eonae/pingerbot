@@ -102,8 +102,12 @@ func (b *Bot) Start() {
 		for _, u := range updates {
 			if u.MyChatMember != nil {
 				ctx.ChatId = u.MyChatMember.Chat.Id
-			} else {
+			} else if u.Message != nil {
 				ctx.ChatId = u.Message.Chat.Id
+			} else {
+				logger.Error("Failed to process update: ", u)
+				b.offset = u.UpdateId + 1
+				continue
 			}
 
 			err := b.handle(u, ctx)

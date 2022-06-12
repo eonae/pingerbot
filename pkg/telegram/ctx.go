@@ -1,6 +1,8 @@
 package telegram
 
 import (
+	"fmt"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -36,6 +38,8 @@ type CommandCtx struct {
 func CreateMessageCtx(base Ctx, msg IncomingMessage) MsgCtx {
 	entities := make(map[string][]string)
 
+	fmt.Println(msg.Entities)
+
 	for _, e := range msg.Entities {
 		key := e.Type
 		value := msg.Text[e.Offset : e.Offset+e.Length]
@@ -68,7 +72,7 @@ func (ctx MsgCtx) Mentions() []string {
 }
 
 func (ctx MsgCtx) Tags() []string {
-	return ctx.entitiesOfType("tag")
+	return ctx.entitiesOfType("hashtag")
 }
 
 func (ctx MsgCtx) Reply(msg OutgoingMessage) error {

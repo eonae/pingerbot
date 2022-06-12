@@ -25,5 +25,5 @@ func (h BotJoinsGroup) Handle(ctx tg.JoinCtx) (err error) {
 		return ctx.SendToChat(messages.PleaseAddUsername(ctx.Actor))
 	}
 
-	return h.S.RememberMember(ctx.Chat.Id, ctx.Actor.Username)
+	return h.S.RememberMember(ctx.Chat.Id, ctx.Actor.Username, []string{})
 }

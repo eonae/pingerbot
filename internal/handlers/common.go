@@ -14,6 +14,7 @@ func rememberIfHasUsername(
 	s state.State,
 	logger *logrus.Entry,
 	sender telegram.Sender,
+	tags []string,
 ) error {
 	if user.Username == "" {
 		logger.Debugf("Can't add user %s - no username!", user.FirstName)
@@ -21,5 +22,5 @@ func rememberIfHasUsername(
 	}
 
 	logger.Infof("Remembering user @%s", user.Username)
-	return s.RememberMember(groupId, user.Username)
+	return s.RememberMember(groupId, user.Username, tags)
 }
