@@ -52,8 +52,6 @@ func main() {
 
 	config := parseConfig()
 
-	bot := telegram.NewBot(config.Bot)
-
 	db, err := sql.Open("postgres", config.Storage.Url)
 	if err != nil {
 		panic(err)
@@ -64,12 +62,14 @@ func main() {
 
 	state := state.New(db)
 
-	bot.AddHandler(handlers.BotJoinsGroup{S: state})
-	bot.AddHandler(handlers.BotLeavesGroup{S: state})
-	bot.AddHandler(handlers.UserJoinsGroup{S: state})
-	bot.AddHandler(handlers.UserLeavesGroup{S: state})
-	bot.AddHandler(handlers.BotHearsPrivateMessage{S: state})
-	bot.AddHandler(handlers.BotHearsPublicMessage{S: state})
+	bot := telegram.NewBot(config.Bot, telegram.Handlers{
+		PrivateMessages: handlers.BotHearsPrivateMessage{S: state},
+		PublicCommands:  handlers.BotHearsPublicCommand{S: state},
+		SelfJoin:        handlers.BotJoinsGroup{S: state},
+		SelfLeave:       handlers.BotLeavesGroup{S: state},
+		UserJoin:        handlers.UserJoinsGroup{S: state},
+		UserLeave:       handlers.UserLeavesGroup{S: state},
+	})
 
 	bot.Start()
 }

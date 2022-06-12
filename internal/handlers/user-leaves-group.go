@@ -10,31 +10,18 @@ type UserLeavesGroup struct {
 	S state.State
 }
 
-func (UserLeavesGroup) Name() string {
-	return "UserJoinsGroup"
-}
-
-func (UserLeavesGroup) Match(u tg.Update) bool {
-	return u.Message != nil && u.Message.LeftMember != nil
-}
-
-func (h UserLeavesGroup) Handle(u tg.Update, ctx tg.Ctx) error {
-	err := h.S.ForgetMember(u.Message.Chat.Id, *u.Message.LeftMember)
+func (h UserLeavesGroup) Handle(ctx tg.LeaveCtx) error {
+	err := h.S.ForgetMember(ctx.ChatId, ctx.Subject)
 	if err != nil {
 		return err
 	}
 
-	name := u.Message.LeftMember.Username
+	name := ctx.Subject.Username
 	if name == "" {
-		name = u.Message.LeftMember.FirstName
+		name = ctx.Subject.FirstName
 	}
 
-	msg := tg.OutgoingMessage{
-		ChatId: u.Message.Chat.Id,
-		Text:   fmt.Sprintf("Farewell, mr. %s!", name),
-	}
-
-	_, err = ctx.Actions.SendMessage(msg)
-
-	return err
+	return ctx.SendToChat(tg.OutgoingMessage{
+		Text: fmt.Sprintf("Farewell, mr. %s!", name),
+	})
 }

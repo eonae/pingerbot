@@ -10,43 +10,20 @@ type BotJoinsGroup struct {
 	S state.State
 }
 
-func (BotJoinsGroup) Name() string {
-	return "BotJoinsGroup"
-}
-
-func (BotJoinsGroup) Match(u tg.Update) bool {
-	return u.MyChatMember != nil && u.MyChatMember.NewChatMember.Status != "left"
-}
-
-func (h BotJoinsGroup) Handle(u tg.Update, ctx tg.Ctx) (err error) {
-	err = h.S.RememberGroup(u.MyChatMember.Chat)
+func (h BotJoinsGroup) Handle(ctx tg.JoinCtx) (err error) {
+	err = h.S.RememberGroup(ctx.Chat)
 	if err != nil {
 		return err
 	}
 
-	msg := tg.OutgoingMessage{
-		ChatId:    u.MyChatMember.Chat.Id,
-		ParseMode: tg.Markdown,
-		Text: `Hi all!
-
-I'm mr.Pinger! If you put **/ping** into you message, i will notify everyone.
-
-_Please note. I don't know people in this chat yet. But I remember everyone who writes something._`,
-	}
-
-	_, err = ctx.Actions.SendMessage(msg)
+	err = ctx.SendToChat(messages.Welcome)
 	if err != nil {
 		return err
 	}
 
-	if u.MyChatMember.From.Username == "" {
-		msg := messages.AddUsername(u.MyChatMember.Chat.Id, u.MyChatMember.From)
-		_, err = ctx.Actions.SendMessage(msg)
-
-		return err
+	if ctx.Actor.Username == "" {
+		return ctx.SendToChat(messages.PleaseAddUsername(ctx.Actor))
 	}
 
-	err = h.S.RememberMember(u.MyChatMember.Chat.Id, u.MyChatMember.From)
-
-	return err
+	return h.S.RememberMember(ctx.Chat.Id, ctx.Actor.Username)
 }

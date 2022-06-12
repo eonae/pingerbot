@@ -1,10 +1,19 @@
 package telegram
 
 import (
+	"errors"
+	"fmt"
+	"pingerbot/pkg/helpers"
+	"strings"
 	"time"
 
 	"github.com/kr/pretty"
 	"github.com/sirupsen/logrus"
+)
+
+const (
+	WrongBotErr = helpers.Error("Command for another bot!")
+	ParseCmdErr = helpers.Error("Couldn't parse command!")
 )
 
 // Bot configuration parameters
@@ -13,40 +22,49 @@ type BotConfig struct {
 	Timeout time.Duration
 }
 
+type MessageHandler interface {
+	Handle(ctx MsgCtx) error
+}
+
+type CommandHandler interface {
+	Handle(ctx CommandCtx) error
+}
+
+type JoinHandler interface {
+	Handle(ctx JoinCtx) error
+}
+
+type LeaveHandler interface {
+	Handle(ctx LeaveCtx) error
+}
+
+type Handlers struct {
+	PublicCommands  CommandHandler
+	PrivateCommands CommandHandler
+	PrivateMessages MessageHandler
+	SelfJoin        JoinHandler
+	SelfLeave       LeaveHandler
+	UserJoin        JoinHandler
+	UserLeave       LeaveHandler
+}
+
 // Bot itself
 type Bot struct {
-	api      Api
-	timeout  time.Duration
-	handlers []Handler
 	offset   int64
-}
-
-type Ctx struct {
-	BotId   int64
-	BotName string
-	Actions Api
-	Logger  *logrus.Entry
-}
-
-type Handler interface {
-	Name() string
-	Match(u Update) bool
-	Handle(u Update, ctx Ctx) error
+	timeout  time.Duration
+	api      Api
+	handlers Handlers
 }
 
 // Bot constructor/initializer
-func NewBot(config BotConfig) Bot {
+func NewBot(config BotConfig, handlers Handlers) Bot {
 	api := NewApi(config.Token)
 	return Bot{
-		api:      api,
-		timeout:  config.Timeout,
-		handlers: []Handler{},
 		offset:   0,
+		timeout:  config.Timeout,
+		api:      api,
+		handlers: handlers,
 	}
-}
-
-func (b *Bot) AddHandler(h Handler) {
-	b.handlers = append(b.handlers, h)
 }
 
 // Start polling
@@ -57,10 +75,19 @@ func (b *Bot) Start() {
 		logrus.Fatal("Failed to get bot profile!")
 	}
 
+	botId, botName := me.Id, "@"+me.Username
+
 	logger := logrus.WithFields(logrus.Fields{
-		"botId":   me.Id,
-		"botName": "@" + me.Username,
+		"botId":   botId,
+		"botName": botName,
 	})
+
+	ctx := Ctx{
+		BotId:   botId,
+		BotName: botName,
+		api:     b.api,
+		Logger:  logger,
+	}
 
 	logger.Infof("BotApplication started! Processing updates...")
 
@@ -74,27 +101,13 @@ func (b *Bot) Start() {
 		}
 
 		for _, u := range updates {
-			logger := logrus.WithField("updateId", u.UpdateId)
-			ctx := Ctx{
-				BotId:   me.Id,
-				BotName: "@" + me.Username,
-				Actions: b.api,
-				Logger:  logger,
+			if u.MyChatMember != nil {
+				ctx.ChatId = u.MyChatMember.Chat.Id
+			} else {
+				ctx.ChatId = u.Message.Chat.Id
 			}
 
-			logrus.Debugf("Processing update:%# v", pretty.Formatter(u))
-
-			handler, ok := b.getHandler(u)
-			if !ok {
-				logger.Debug("No handler found. Update is skipped")
-				b.offset = u.UpdateId + 1
-				continue
-			}
-
-			logger.Debug("Handler found:", handler.Name())
-			ctx.Logger = ctx.Logger.WithField("handler", handler.Name())
-
-			err := handler.Handle(u, ctx)
+			err := b.handle(u, ctx)
 			if err != nil {
 				logger.Error("Failed to process update", err)
 			} else {
@@ -105,11 +118,96 @@ func (b *Bot) Start() {
 	}
 }
 
-func (b Bot) getHandler(u Update) (Handler, bool) {
-	for _, h := range b.handlers {
-		if h.Match(u) {
-			return h, true
+func (b Bot) handle(u Update, ctx Ctx) error {
+	logger := logrus.WithField("updateId", u.UpdateId)
+
+	logger.Debugf("Processing update:%# v", pretty.Formatter(u))
+
+	if u.MyChatMember != nil {
+		extendedCtx := JoinCtx{
+			Ctx:     ctx,
+			Chat:    u.MyChatMember.Chat,
+			Actor:   u.MyChatMember.From,
+			Subject: u.MyChatMember.NewChatMember.User,
 		}
+
+		if u.MyChatMember.NewChatMember.Status == "left" {
+			return b.handlers.SelfLeave.Handle(LeaveCtx(extendedCtx))
+		}
+		return b.handlers.SelfJoin.Handle(extendedCtx)
 	}
-	return nil, false
+
+	if u.Message == nil {
+		return errors.New("no handler found")
+	}
+
+	if u.Message.NewMember != nil {
+		return b.handlers.UserJoin.Handle(JoinCtx{
+			Ctx:     ctx,
+			Chat:    u.Message.Chat,
+			Actor:   u.Message.From,
+			Subject: *u.Message.NewMember,
+		})
+	}
+
+	if u.Message.LeftMember != nil {
+		return b.handlers.UserLeave.Handle(LeaveCtx{
+			Ctx:     ctx,
+			Chat:    u.Message.Chat,
+			Actor:   u.Message.From,
+			Subject: *u.Message.LeftMember,
+		})
+	}
+
+	msgCtx := CreateMessageCtx(ctx, *u.Message)
+
+	switch len(msgCtx.Commands()) {
+	case 0:
+		// No checks needed that it's private message because
+		// Privacy mode is on.
+		return b.handlers.PrivateMessages.Handle(msgCtx)
+	case 1:
+		cmd, err := parseCmd(ctx.BotName, msgCtx.Commands()[0])
+		switch err {
+		case ParseCmdErr:
+			return err
+		case WrongBotErr:
+			logger.Debugf("Skipping command because it's for some other bot")
+		}
+
+		cmdCtx := CommandCtx{
+			MsgCtx:  msgCtx,
+			Command: cmd,
+		}
+
+		if msgCtx.Message.Chat.Type == "private" {
+			return b.handlers.PrivateCommands.Handle(cmdCtx)
+		}
+
+		return b.handlers.PublicCommands.Handle(cmdCtx)
+	default:
+		err := msgCtx.Reply(OutgoingMessage{Text: "More that one command contains in message!"})
+		if err != nil {
+			return err
+		}
+
+		return errors.New("more that one command contains in message")
+	}
+}
+
+func parseCmd(botName string, cmd string) (string, error) {
+	parts := strings.Split(cmd, "@")
+	fmt.Println(botName, cmd, parts)
+	switch len(parts) {
+	case 1:
+		return cmd, nil
+	case 2:
+		fmt.Println("@"+parts[1], botName)
+		if "@"+parts[1] == botName {
+			return parts[0], nil
+		}
+		return "", WrongBotErr
+	default:
+		return "", ParseCmdErr
+	}
 }
