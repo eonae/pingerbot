@@ -71,8 +71,8 @@ func (s *State) RememberMember(groupId int64, username string) (err error) {
 }
 
 // Forget member. Is used when user
-func (s *State) ForgetMember(groupId int64, u telegram.User) (err error) {
-	_, err = s.db.Exec(`DELETE FROM members WHERE username = $1 AND group_id = $2`, u.Username, groupId)
+func (s *State) ForgetMember(groupId int64, username string) (err error) {
+	_, err = s.db.Exec(`DELETE FROM members WHERE username = $1 AND group_id = $2`, username, groupId)
 
 	return err
 }

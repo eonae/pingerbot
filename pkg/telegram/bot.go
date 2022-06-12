@@ -2,7 +2,6 @@ package telegram
 
 import (
 	"errors"
-	"fmt"
 	"pingerbot/pkg/helpers"
 	"strings"
 	"time"
@@ -197,12 +196,10 @@ func (b Bot) handle(u Update, ctx Ctx) error {
 
 func parseCmd(botName string, cmd string) (string, error) {
 	parts := strings.Split(cmd, "@")
-	fmt.Println(botName, cmd, parts)
 	switch len(parts) {
 	case 1:
 		return cmd, nil
 	case 2:
-		fmt.Println("@"+parts[1], botName)
 		if "@"+parts[1] == botName {
 			return parts[0], nil
 		}

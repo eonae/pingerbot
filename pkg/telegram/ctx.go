@@ -1,6 +1,8 @@
 package telegram
 
-import "github.com/sirupsen/logrus"
+import (
+	"github.com/sirupsen/logrus"
+)
 
 type Ctx struct {
 	BotId   int64
@@ -38,7 +40,7 @@ func CreateMessageCtx(base Ctx, msg IncomingMessage) MsgCtx {
 		key := e.Type
 		value := msg.Text[e.Offset : e.Offset+e.Length]
 
-		_, ok := entities["key"]
+		_, ok := entities[key]
 		if ok {
 			entities[key] = append(entities[key], value)
 		} else {

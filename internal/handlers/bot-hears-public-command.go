@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"pingerbot/internal/state"
 	tg "pingerbot/pkg/telegram"
 	"strings"
@@ -33,8 +32,6 @@ func (h BotHearsPublicCommand) Handle(ctx tg.CommandCtx) error {
 	case "/add":
 		mentions := ctx.Mentions()
 
-		fmt.Println(mentions)
-
 		if len(mentions) == 0 {
 			return ctx.Reply(tg.OutgoingMessage{Text: "Please provide some usernames!"})
 		}
@@ -54,9 +51,25 @@ func (h BotHearsPublicCommand) Handle(ctx tg.CommandCtx) error {
 				ctx.Logger.Error(err)
 			}
 		}
+	case "/remove":
+		mentions := ctx.Mentions()
 
+		if len(mentions) == 0 {
+			return ctx.Reply(tg.OutgoingMessage{Text: "Please provide some usernames!"})
+		}
+
+		for _, mention := range mentions {
+			ctx.Logger.Infof("Forgetting user %s", mention)
+
+			err := h.S.ForgetMember(ctx.ChatId, mention)
+			if err != nil {
+				ctx.Logger.Error(err)
+			}
+		}
 	case "/addme":
 		return rememberIfHasUsername(ctx.ChatId, ctx.Message.From, h.S, ctx.Logger, ctx)
+	case "/removeme":
+		return h.S.ForgetMember(ctx.ChatId, "@"+ctx.Message.From.Username)
 	default:
 		ctx.Logger.Warnf("Unknown command: %s", ctx.Command)
 	}
