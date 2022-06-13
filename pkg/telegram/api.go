@@ -25,14 +25,10 @@ type Api struct {
 func NewApi(token string) Api {
 	baseUrl, _ := url.Parse("https://api.telegram.org/bot" + token + "/")
 
-	tr := http.Transport{}
-
-	client := http.Client{
-		Transport: &tr,
-	}
-
 	return Api{
-		client:  client,
+		client: http.Client{
+			Transport: &http.Transport{},
+		},
 		baseUrl: *baseUrl,
 	}
 }

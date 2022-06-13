@@ -42,13 +42,14 @@ type MsgCtx struct {
 }
 
 func CreateMessageCtx(base Ctx, msg IncomingMessage) MsgCtx {
+	runes := []rune(msg.Text)
 	entities := make(map[string][]string)
 
 	fmt.Println(msg.Entities)
 
 	for _, e := range msg.Entities {
 		key := e.Type
-		value := msg.Text[e.Offset : e.Offset+e.Length]
+		value := string(runes[e.Offset : e.Offset+e.Length])
 
 		_, ok := entities[key]
 		if ok {
