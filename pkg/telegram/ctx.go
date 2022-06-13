@@ -6,6 +6,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Base context that will be embedded to more specific ones
 type Ctx struct {
 	BotId   int64
 	BotName string
@@ -15,24 +16,29 @@ type Ctx struct {
 }
 
 type Sender interface {
-	SendToChat(msg OutgoingMessage) error
+	SendToChat(msg MsgContent) error
 }
 
-func (ctx Ctx) SendToChat(msg OutgoingMessage) error {
-	msg.ChatId = ctx.ChatId
-	_, err := ctx.api.SendMessage(msg)
+func (ctx Ctx) SendToChat(msg MsgContent) error {
+	_, err := ctx.api.SendMessage(OutgoingMessage{
+		MsgContent: msg,
+		ChatId:     ctx.ChatId,
+	})
 	return err
+}
+
+func (ctx Ctx) SendTxt(text string) error {
+	return ctx.SendToChat(MsgContent{Text: text})
+}
+
+func (ctx Ctx) SendMD(text string) error {
+	return ctx.SendToChat(MsgContent{Text: text, ParseMode: Markdown})
 }
 
 type MsgCtx struct {
 	Ctx
 	Message  IncomingMessage
 	entities map[string][]string
-}
-
-type CommandCtx struct {
-	MsgCtx
-	Command string
 }
 
 func CreateMessageCtx(base Ctx, msg IncomingMessage) MsgCtx {
@@ -75,11 +81,26 @@ func (ctx MsgCtx) Tags() []string {
 	return ctx.entitiesOfType("hashtag")
 }
 
-func (ctx MsgCtx) Reply(msg OutgoingMessage) error {
-	msg.ChatId = ctx.ChatId
-	msg.ReplyTo = ctx.Message.Id
-	_, err := ctx.api.SendMessage(msg)
+func (ctx MsgCtx) Reply(msg MsgContent) error {
+	_, err := ctx.api.SendMessage(OutgoingMessage{
+		MsgContent: msg,
+		ChatId:     ctx.ChatId,
+		ReplyTo:    ctx.Message.Id,
+	})
 	return err
+}
+
+func (ctx MsgCtx) ReplyTxt(text string) error {
+	return ctx.Reply(MsgContent{Text: text})
+}
+
+func (ctx MsgCtx) ReplyMD(text string) error {
+	return ctx.Reply(MsgContent{Text: text, ParseMode: Markdown})
+}
+
+type CommandCtx struct {
+	MsgCtx
+	Command string
 }
 
 type JoinCtx struct {

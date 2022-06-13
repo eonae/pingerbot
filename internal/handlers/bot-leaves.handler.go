@@ -5,10 +5,10 @@ import (
 	tg "pingerbot/pkg/telegram"
 )
 
-type BotLeavesGroup struct {
+type BotLeavesGroupHandler struct {
 	S state.State
 }
 
-func (h BotLeavesGroup) Handle(ctx tg.LeaveCtx) error {
+func (h BotLeavesGroupHandler) Handle(ctx tg.LeaveCtx) error {
 	return h.S.ForgetGroup(ctx.Chat)
 }

@@ -65,18 +65,16 @@ type Me struct {
 	Username                string `json:"username"`
 }
 
-type OutgoingMessage struct {
-	ChatId         int64       `json:"chat_id"`
+type MsgContent struct {
 	Text           string      `json:"text"`
 	ParseMode      string      `json:"parse_mode,omitempty"`
 	Entities       []Entity    `json:"entities,omitempty"`
 	ProtectContent bool        `json:"protect_content,omitempty"`
-	ReplyTo        int         `json:"reply_to_message_id,omitempty"`
 	ReplyMarkup    interface{} `json:"reply_markup,omitempty"`
 }
 
-func NewReply(to IncomingMessage, msg OutgoingMessage) OutgoingMessage {
-	msg.ChatId = to.Chat.Id
-	msg.ReplyTo = to.Id
-	return msg
+type OutgoingMessage struct {
+	ChatId  int64 `json:"chat_id"`
+	ReplyTo int   `json:"reply_to_message_id,omitempty"`
+	MsgContent
 }

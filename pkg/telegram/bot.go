@@ -189,7 +189,7 @@ func (b Bot) handle(u Update, ctx Ctx) error {
 
 		return b.handlers.PublicCommands.Handle(cmdCtx)
 	default:
-		err := msgCtx.Reply(OutgoingMessage{Text: "More that one command contains in message!"})
+		err := msgCtx.ReplyTxt("More that one command contains in message!")
 		if err != nil {
 			return err
 		}

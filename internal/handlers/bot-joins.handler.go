@@ -6,11 +6,11 @@ import (
 	tg "pingerbot/pkg/telegram"
 )
 
-type BotJoinsGroup struct {
+type BotJoinsGroupHandler struct {
 	S state.State
 }
 
-func (h BotJoinsGroup) Handle(ctx tg.JoinCtx) (err error) {
+func (h BotJoinsGroupHandler) Handle(ctx tg.JoinCtx) (err error) {
 	err = h.S.RememberGroup(ctx.Chat)
 	if err != nil {
 		return err

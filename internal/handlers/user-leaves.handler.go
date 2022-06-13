@@ -6,11 +6,11 @@ import (
 	tg "pingerbot/pkg/telegram"
 )
 
-type UserLeavesGroup struct {
+type UserLeavesGroupHandler struct {
 	S state.State
 }
 
-func (h UserLeavesGroup) Handle(ctx tg.LeaveCtx) error {
+func (h UserLeavesGroupHandler) Handle(ctx tg.LeaveCtx) error {
 	err := h.S.ForgetMember(ctx.ChatId, ctx.Subject.Username, []string{})
 	if err != nil {
 		return err
@@ -21,7 +21,5 @@ func (h UserLeavesGroup) Handle(ctx tg.LeaveCtx) error {
 		name = ctx.Subject.FirstName
 	}
 
-	return ctx.SendToChat(tg.OutgoingMessage{
-		Text: fmt.Sprintf("Farewell, mr. %s!", name),
-	})
+	return ctx.SendTxt(fmt.Sprintf("Farewell, mr. %s!", name))
 }

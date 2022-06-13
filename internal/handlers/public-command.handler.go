@@ -6,11 +6,11 @@ import (
 	"strings"
 )
 
-type BotHearsPublicCommand struct {
+type PublicCommandHandler struct {
 	S state.State
 }
 
-func (h BotHearsPublicCommand) Handle(ctx tg.CommandCtx) error {
+func (h PublicCommandHandler) Handle(ctx tg.CommandCtx) error {
 	from := ctx.Message.From
 	if from.Id == ctx.BotId {
 		ctx.Logger.Debug("Skipping message from self")
@@ -25,15 +25,15 @@ func (h BotHearsPublicCommand) Handle(ctx tg.CommandCtx) error {
 		}
 
 		if len(members) == 0 {
-			return ctx.Reply(tg.OutgoingMessage{Text: "I don't know anyone yet!"})
+			return ctx.ReplyTxt("I don't know anyone yet!")
 		}
 
-		return ctx.Reply(tg.OutgoingMessage{Text: strings.Join(members, " ")})
+		return ctx.ReplyTxt(strings.Join(members, " "))
 	case "/add":
 		mentions, tags := ctx.Mentions(), ctx.Tags()
 
 		if len(mentions) == 0 {
-			return ctx.Reply(tg.OutgoingMessage{Text: "Please provide some usernames!"})
+			return ctx.ReplyTxt("Please provide some usernames!")
 		}
 
 		for _, mention := range mentions {
@@ -55,7 +55,7 @@ func (h BotHearsPublicCommand) Handle(ctx tg.CommandCtx) error {
 		mentions, tags := ctx.Mentions(), ctx.Tags()
 
 		if len(mentions) == 0 {
-			return ctx.Reply(tg.OutgoingMessage{Text: "Please provide some usernames!"})
+			return ctx.ReplyTxt("Please provide some usernames!")
 		}
 
 		for _, mention := range mentions {

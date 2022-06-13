@@ -7,11 +7,11 @@ import (
 	tg "pingerbot/pkg/telegram"
 )
 
-type UserJoinsGroup struct {
+type UserJoinsGroupHandler struct {
 	S state.State
 }
 
-func (h UserJoinsGroup) Handle(ctx tg.JoinCtx) error {
+func (h UserJoinsGroupHandler) Handle(ctx tg.JoinCtx) error {
 	if ctx.Subject.Id == ctx.BotId {
 		ctx.Logger.Debug("Skipping message about self")
 		return nil
@@ -30,7 +30,5 @@ func (h UserJoinsGroup) Handle(ctx tg.JoinCtx) error {
 		return err
 	}
 
-	return ctx.SendToChat(tg.OutgoingMessage{
-		Text: fmt.Sprintf("Hi @%s! I know you now!", ctx.Subject.Username),
-	})
+	return ctx.SendTxt(fmt.Sprintf("Hi @%s! I know you now!", ctx.Subject.Username))
 }
