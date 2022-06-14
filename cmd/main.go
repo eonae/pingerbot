@@ -65,6 +65,7 @@ func main() {
 	bot := telegram.NewBot(config.Bot, telegram.Handlers{
 		PrivateMessages: handlers.PrivateMessageHandler{S: state},
 		PublicCommands:  handlers.PublicCommandHandler{S: state},
+		PrivateCommands: handlers.PrivateCommandHandler{S: state},
 		SelfJoin:        handlers.BotJoinsGroupHandler{S: state},
 		SelfLeave:       handlers.BotLeavesGroupHandler{S: state},
 		UserJoin:        handlers.UserJoinsGroupHandler{S: state},
