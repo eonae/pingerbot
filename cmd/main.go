@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"os"
 	"pingerbot/internal/handlers"
+	"pingerbot/internal/handlers/commands"
 	"pingerbot/internal/state"
 	"pingerbot/pkg/telegram"
 	"time"
@@ -64,12 +65,17 @@ func main() {
 
 	bot := telegram.NewBot(config.Bot, telegram.Handlers{
 		PrivateMessages: handlers.PrivateMessageHandler{S: state},
-		PublicCommands:  handlers.PublicCommandHandler{S: state},
-		PrivateCommands: handlers.PrivateCommandHandler{S: state},
 		SelfJoin:        handlers.BotJoinsGroupHandler{S: state},
 		SelfLeave:       handlers.BotLeavesGroupHandler{S: state},
 		UserJoin:        handlers.UserJoinsGroupHandler{S: state},
 		UserLeave:       handlers.UserLeavesGroupHandler{S: state},
+		PublicCommands: map[string]telegram.CommandHandler{
+			"/add":      commands.AddCommandHandler{S: state},
+			"/addme":    commands.AddmeCommandHandler{S: state},
+			"/remove":   commands.RemoveCommandHandler{S: state},
+			"/removeme": commands.RemovemeCommandHandler{S: state},
+			"/ping":     commands.PingCommandHandler{S: state},
+		},
 	})
 
 	bot.Start()

@@ -38,13 +38,13 @@ type LeaveHandler interface {
 }
 
 type Handlers struct {
-	PublicCommands  CommandHandler
-	PrivateCommands CommandHandler
 	PrivateMessages MessageHandler
 	SelfJoin        JoinHandler
 	SelfLeave       LeaveHandler
 	UserJoin        JoinHandler
 	UserLeave       LeaveHandler
+	PublicCommands  map[string]CommandHandler
+	PrivateCommands map[string]CommandHandler
 }
 
 // Bot itself
@@ -127,17 +127,11 @@ func (b Bot) handle(u Update, ctx Ctx) error {
 	logger.Debugf("Processing update:%# v", pretty.Formatter(u))
 
 	if u.MyChatMember != nil {
-		extendedCtx := JoinCtx{
-			Ctx:     ctx,
-			Chat:    u.MyChatMember.Chat,
-			Actor:   u.MyChatMember.From,
-			Subject: u.MyChatMember.NewChatMember.User,
+		if u.MyChatMember.NewChatMember.Status == "left" {
+			return b.handlers.SelfLeave.Handle(ctxFromLeaveEvent(ctx, *u.MyChatMember))
 		}
 
-		if u.MyChatMember.NewChatMember.Status == "left" {
-			return b.handlers.SelfLeave.Handle(LeaveCtx(extendedCtx))
-		}
-		return b.handlers.SelfJoin.Handle(extendedCtx)
+		return b.handlers.SelfJoin.Handle(ctxFromJoinEvent(ctx, *u.MyChatMember))
 	}
 
 	if u.Message == nil {
@@ -145,29 +139,23 @@ func (b Bot) handle(u Update, ctx Ctx) error {
 	}
 
 	if u.Message.NewMember != nil {
-		return b.handlers.UserJoin.Handle(JoinCtx{
-			Ctx:     ctx,
-			Chat:    u.Message.Chat,
-			Actor:   u.Message.From,
-			Subject: *u.Message.NewMember,
-		})
+		return b.handlers.UserJoin.Handle(joinCtxFromMessage(ctx, *u.Message))
 	}
 
 	if u.Message.LeftMember != nil {
-		return b.handlers.UserLeave.Handle(LeaveCtx{
-			Ctx:     ctx,
-			Chat:    u.Message.Chat,
-			Actor:   u.Message.From,
-			Subject: *u.Message.LeftMember,
-		})
+		return b.handlers.UserLeave.Handle(leaveCtxFromMessage(ctx, *u.Message))
 	}
 
-	msgCtx := CreateMessageCtx(ctx, *u.Message)
+	msgCtx := ctx.ToMsgContext(*u.Message)
 
 	switch len(msgCtx.Commands()) {
 	case 0:
 		// No checks needed that it's private message because
 		// Privacy mode is on.
+		if b.handlers.PrivateMessages == nil {
+			logger.Debugf("No handler for private messages")
+		}
+
 		return b.handlers.PrivateMessages.Handle(msgCtx)
 	case 1:
 		cmd, err := parseCmd(ctx.BotName, msgCtx.Commands()[0])
@@ -178,16 +166,26 @@ func (b Bot) handle(u Update, ctx Ctx) error {
 			logger.Debugf("Skipping command because it's for some other bot")
 		}
 
-		cmdCtx := CommandCtx{
-			MsgCtx:  msgCtx,
-			Command: cmd,
-		}
+		var handlers map[string]CommandHandler
 
 		if msgCtx.Message.Chat.Type == "private" {
-			return b.handlers.PrivateCommands.Handle(cmdCtx)
+			handlers = b.handlers.PrivateCommands
+		} else {
+			handlers = b.handlers.PrivateCommands
 		}
 
-		return b.handlers.PublicCommands.Handle(cmdCtx)
+		if handlers == nil {
+			ctx.Logger.Warnf("Unknown command: %s", cmd)
+			return nil
+		}
+
+		handler, ok := handlers[cmd]
+		if ok {
+			return handler.Handle(msgCtx.ToCommandCtx(cmd))
+		}
+
+		ctx.Logger.Warnf("Unknown command: %s", cmd)
+		return nil
 	default:
 		err := msgCtx.ReplyTxt("More that one command contains in message!")
 		if err != nil {
