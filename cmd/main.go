@@ -75,6 +75,7 @@ func main() {
 			"/remove":   commands.RemoveCommandHandler{S: state},
 			"/removeme": commands.RemovemeCommandHandler{S: state},
 			"/ping":     commands.PingCommandHandler{S: state},
+			"/ls":       commands.LsCommandHandler{S: state},
 		},
 	})
 

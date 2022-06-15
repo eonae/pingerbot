@@ -175,6 +175,57 @@ func (s State) GetKnownMembers(groupId int64, tags []string) ([]string, error) {
 	return members, nil
 }
 
+type GroupList map[string][]string
+
+func (l GroupList) String() string {
+	sb := strings.Builder{}
+
+	for tag, members := range l {
+		sb.WriteString(tag)
+		sb.WriteString("\n")
+		for _, username := range members {
+			stripped := username[1:]
+			sb.WriteString(fmt.Sprintf("- %s\n", stripped))
+		}
+	}
+
+	return sb.String()
+}
+
+func (s *State) ListGroupMembers(groupId int64, tags []string) (GroupList, error) {
+	rows, err := s.db.Query(`
+		SELECT
+			tag,
+			array_agg(username) 
+		FROM members
+		WHERE group_id = $1
+		GROUP BY group_id, tag
+	`, groupId)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	result := make(GroupList)
+
+	for rows.Next() {
+		var tag string
+		var usernames []string
+
+		err = rows.Scan(&tag, &usernames)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(tags) == 0 || helpers.Includes(tags, tag) {
+			result[tag] = usernames
+		}
+	}
+
+	return result, nil
+}
+
 func (s *State) groupExists(groupId int64) (bool, error) {
 	rows, err := s.db.Query(`SELECT id FROM groups WHERE id = $1 LIMIT 1`, groupId)
 	if err != nil {
