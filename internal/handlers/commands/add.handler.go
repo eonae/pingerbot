@@ -26,7 +26,7 @@ func (h AddCommandHandler) Handle(ctx tg.CommandCtx) error {
 		ctx.Logger.Infof("Remembering user %s", mention)
 
 		// Strip @ because it will be added inside of RememberMember method
-		err := h.S.RememberMember(ctx.ChatId, mention[1:], tags)
+		err := h.S.RememberMember(state.GroupId(ctx.ChatId), mention[1:], tags)
 		if err != nil {
 			ctx.Logger.Error(err)
 		}

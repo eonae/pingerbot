@@ -11,7 +11,7 @@ type UserLeavesGroupHandler struct {
 }
 
 func (h UserLeavesGroupHandler) Handle(ctx tg.LeaveCtx) error {
-	err := h.S.ForgetMember(ctx.ChatId, ctx.Subject.Username, []string{})
+	err := h.S.ForgetMember(state.GroupId(ctx.ChatId), ctx.Subject.Username, []string{})
 	if err != nil {
 		return err
 	}

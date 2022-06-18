@@ -18,5 +18,5 @@ func (h AddmeCommandHandler) Handle(ctx tg.CommandCtx) error {
 	}
 
 	ctx.Logger.Infof("Remembering user @%s", user.Username)
-	return h.S.RememberMember(ctx.ChatId, user.Username, ctx.Tags())
+	return h.S.RememberMember(state.GroupId(ctx.ChatId), user.Username, ctx.Tags())
 }

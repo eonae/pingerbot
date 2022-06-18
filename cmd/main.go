@@ -1,7 +1,7 @@
 package main
 
 import (
-	"database/sql"
+	"context"
 	"os"
 	"pingerbot/internal/handlers"
 	"pingerbot/internal/handlers/commands"
@@ -9,9 +9,10 @@ import (
 	"pingerbot/pkg/telegram"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	_ "github.com/jackc/pgx/stdlib"
+	"github.com/jackc/pgx/v4/pgxpool"
 
-	_ "github.com/lib/pq"
+	"github.com/sirupsen/logrus"
 )
 
 type StorageConfig struct {
@@ -53,13 +54,12 @@ func main() {
 
 	config := parseConfig()
 
-	db, err := sql.Open("postgres", config.Storage.Url)
+	db, err := pgxpool.Connect(context.Background(), config.Storage.Url)
 	if err != nil {
 		panic(err)
 	}
 
 	defer db.Close()
-	db.SetMaxOpenConns(10)
 
 	state := state.New(db)
 

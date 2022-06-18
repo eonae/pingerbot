@@ -19,7 +19,7 @@ func (h RemoveCommandHandler) Handle(ctx tg.CommandCtx) error {
 	for _, mention := range mentions {
 		ctx.Logger.Infof("Forgetting user %s", mention)
 
-		err := h.S.ForgetMember(ctx.ChatId, mention, tags)
+		err := h.S.ForgetMember(state.GroupId(ctx.ChatId), mention, tags)
 		if err != nil {
 			ctx.Logger.Error(err)
 		}

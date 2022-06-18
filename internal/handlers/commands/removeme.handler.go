@@ -10,5 +10,5 @@ type RemovemeCommandHandler struct {
 }
 
 func (h RemovemeCommandHandler) Handle(ctx tg.CommandCtx) error {
-	return h.S.ForgetMember(ctx.ChatId, "@"+ctx.Message.From.Username, ctx.Tags())
+	return h.S.ForgetMember(state.GroupId(ctx.ChatId), "@"+ctx.Message.From.Username, ctx.Tags())
 }

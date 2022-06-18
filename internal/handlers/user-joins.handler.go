@@ -25,7 +25,7 @@ func (h UserJoinsGroupHandler) Handle(ctx tg.JoinCtx) error {
 		return err
 	}
 
-	err := h.S.RememberMember(ctx.ChatId, ctx.Subject.Username, []string{})
+	err := h.S.RememberMember(state.GroupId(ctx.ChatId), ctx.Subject.Username, []string{})
 	if err != nil {
 		return err
 	}

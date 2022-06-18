@@ -11,7 +11,7 @@ type PingCommandHandler struct {
 }
 
 func (h PingCommandHandler) Handle(ctx tg.CommandCtx) error {
-	members, err := h.S.GetKnownMembers(ctx.ChatId, ctx.Tags())
+	members, err := h.S.GetKnownMembers(state.GroupId(ctx.ChatId), ctx.Tags())
 	if err != nil {
 		return err
 	}

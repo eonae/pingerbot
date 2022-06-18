@@ -112,7 +112,7 @@ func (b *Bot) Start() {
 
 			err := b.handle(u, ctx)
 			if err != nil {
-				logger.Error("Failed to process update", err)
+				logger.Error("Failed to process update: ", err)
 			} else {
 				logger.Debug("Update handled successfully")
 			}
@@ -124,7 +124,7 @@ func (b *Bot) Start() {
 func (b Bot) handle(u Update, ctx Ctx) error {
 	logger := logrus.WithField("updateId", u.UpdateId)
 
-	logger.Debugf("Processing update:%# v", pretty.Formatter(u))
+	logger.Debugf("Processing update: %# v", pretty.Formatter(u))
 
 	if u.MyChatMember != nil {
 		if u.MyChatMember.NewChatMember.Status == "left" {
@@ -171,7 +171,7 @@ func (b Bot) handle(u Update, ctx Ctx) error {
 		if msgCtx.Message.Chat.Type == "private" {
 			handlers = b.handlers.PrivateCommands
 		} else {
-			handlers = b.handlers.PrivateCommands
+			handlers = b.handlers.PublicCommands
 		}
 
 		if handlers == nil {
