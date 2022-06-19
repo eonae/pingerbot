@@ -9,6 +9,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+
     - uses: actions/checkout@v3
 
     - name: install_golang
@@ -16,8 +17,15 @@ jobs:
       with:
         go-version: 1.18
 
-    - name: Build
+    - name: build
       run: make build
+
+    - name: create_artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: pingerbot-${{github.sha}}
+        path: build/pingerbot
+        if-no-files-found: error
 
     - name: Test
       run: echo "No tests yet"

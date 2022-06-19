@@ -1,0 +1,20 @@
+name: deploy
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+
+    - uses: actions/download-artifact@v3
+      with:
+        name: pingerbot-${{github.sha}}
+    
+    - name: deploy
+      run: ssh debian@109.120.188.233 && ls /opt/pingerbot
+      
