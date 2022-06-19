@@ -1,0 +1,72 @@
+name: deploy
+
+on:
+  push:
+    branches: [ "master" ]
+  # push:
+  #   tags:
+  #     - '*'
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+
+    - uses: actions/checkout@v3
+
+    - name: Install Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: 1.18
+
+    - name: build
+      run: make build
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: pingerbot_build
+        path: build/pingerbot
+        if-no-files-found: error
+
+    - name: Test
+      run: echo "No tests yet"
+
+  deploy:
+    needs: ['build']
+    runs-on: ubuntu-latest
+    environment: CI
+    steps:
+      - name: Download build
+        uses: actions/download-artifact@v3
+        with:
+          name: pingerbot_build
+          path: pingerbot
+
+      - name: Debug
+        run: file ~/artifact
+
+      - name: Copy build
+        uses: appleboy/scp-action@master
+        with:
+          port: 22
+          username: debian
+          host: ${{ secrets.MCS_HOST }}
+          key: ${{ secrets.MCS_SSH_KEY }}
+          source: pingerbot/pingerbot
+          target: /tmp
+          strip_components: 1
+
+      - name: Restart
+        uses: appleboy/ssh-action@master
+        with:
+          port: 22
+          username: debian
+          host: ${{ secrets.MCS_HOST }}
+          key: ${{ secrets.MCS_SSH_KEY }}
+          script: |
+            sudo mv /tmp/pingerbot /opt/pingerbot/bin
+            sudo chmod +x /opt/pingerbot/bin
+            sudo systemctl restart pingerbot
+            sudo systemctl status
