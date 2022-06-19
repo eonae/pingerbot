@@ -4,6 +4,7 @@
 #### Initial problem
 
 My team of developers uses telegram to communicate on daily basis. We really like it's simplicity and speed.
+
 The only feature that we miss is mentioning all members of a group (something like Slack's **@all** or **@channel**). It's a pitty that telegram doesn't have native support for this.
 
 _Bots to the resque!_
@@ -29,31 +30,90 @@ In the end the plan is to write a post about the journey and bot itself on habr 
 #### Target functionality
 
 - [x] Ping all members of the group with **/ping** command.
-- [ ] Add members to categories (eg.: #backend, #frontend or any others)
-- [ ] Ping users by categories with **/ping#**_{tag}_ command
+- [x] Add members to categories (eg.: #backend, #frontend or any others)
+- [x] Ping users by categories with **/ping#**_{tag}_ command
 
 Bot should definitely work in **privacy mode** so any team could use it safely.
 
-> Maybe some other functions will be suggested by my teammates or other users. Any contribution is welcomed!
+> Maybe some other functions will be suggested by my teammates or other users. Any contribution is welcome!
 ___
-## Current state (v0.1.0)
+## Current state (v0.2.0)
 
 #### Privacy
-BEWARE! At the moment privacy mode **is disabled**. It will be fixed in the next minor version.
-
-#### Limitations
-
-Standard Telegram Bot API doesn't allow bots to list all users in group. At least I couldn't find this option. That's why users should be registered before they can receive notifications. There are 2 ways:
-- user is added to "known list" when he joins the group (and removed when leaves)
-- user is added when he writes a message
-
-Second option is **unsecure** (needs privacy mode to be disabled) and **will be removed** in next version. Instead new command will be implemented: **/add** and **/addme**
+Unlike in v0.1.0, now privacy mode **is enabled**.
 
 #### Usage
 
 Add **@eonae_pinger_bot** to you telegram group.
 
-Then type **/ping <your message>**. It will trigger bot's reply to your message, mentioning all known members of the group.
+Now you can send him some commands.
+
+##### Registration
+
+Standard _Telegram Bot API_ doesn't allow bots to list all users in group. At least I couldn't find this option. That's why users should be registered before they can receive notifications.
+
+Everyone can add himself this way: 
+> **/addme**
+
+To add someone else use **/add** For example:
+> **/add** @jessy, @jimmy ...
+
+NOTE: anyone can add users, not only admin
+
+##### Tags
+
+Since 0.2.0 you user can be added with tag. Eg:
+
+> **/addme** _#backend_ (you can specify more tags)
+
+or
+
+> **/add** @jimmy @jessy #pm #important
+
+NOTE: Adding without tag means adding with #all (created automatically)
+
+##### List
+
+You can get a list of users grouped by tags:
+
+> **/ls** [tags]
+
+If tags are provided, only users added to these tags will be shown. Output will be something like this:
+```
+#all
+-> jessy
+-> jimmy
+-> vince
+-> kate
+#backend
+-> kate
+-> vince
+#pm
+-> jessy
+-> jimmy
+```
+
+##### Ping
+
+If you type **/ping** in a message, it will trigger bot to reply to it, mentioning all members he know in the group. Like this:
+
+> **/ping** Hey, guys! Time for daily!
+```
+> [replyto] Hey guys! Time for daily!
+@jimmy, @jessy, @kate, @vince
+```
+
+You can specify tags to mention not all of the users:
+
+> **/ping** _#backend_ Backenders, come on!
+
+##### Unregister
+
+Commands **/remove** and **/removeme** are just opposite to /add and /addme and can be used with tags too:
+
+> **/removeme** _#backend_
+> **/remove** _@vince_ _#backend_
+
 ___
 ## TODO
 
@@ -62,9 +122,9 @@ ___
 - [x] Sending messages
 - [x] Groups registry, known members registry
 - [x] Basic target logic (add to chat, get members list, react on **/ping** keyword)
-- [ ] Implement /add and /addme
-- [ ] Enable privacy mode
-- [ ] Implement tags/topics (#backend,#frontend)
+- [x] Implement /add and /addme
+- [x] Enable privacy mode
+- [x] Implement tags/topics (#backend,#frontend)
 - [ ] CI/CD (not sure how exactly yet)
 - [ ] Monitoring with grafana and maybe prometheus
 - [ ] Process each chat concurrently
