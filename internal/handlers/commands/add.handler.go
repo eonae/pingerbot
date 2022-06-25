@@ -18,7 +18,7 @@ func (h AddCommandHandler) Handle(ctx tg.CommandCtx) error {
 
 	for _, mention := range mentions {
 		if string(mention[0]) != "@" {
-			ctx.Logger.Warn("Can't remember user %s - not username!", mention)
+			ctx.Logger.Warnf("Can't remember user %s - not username!", mention)
 			continue
 		}
 

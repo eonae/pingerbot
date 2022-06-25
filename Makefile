@@ -10,6 +10,9 @@ build:
 start-built:
 	export $$(cat .env) && ./build/pingerbot
 
+lint:
+	golangci-lint run
+
 add-migration:
 	migrate create -ext sql -dir migrations $(NAME)
 
