@@ -30,7 +30,8 @@ func New(db *pgxpool.Pool) State {
 
 // Remember group
 func (s *State) RememberGroup(c telegram.Chat) (err error) {
-	exists, err := s.groupExists(GroupId(c.Id))
+	chatId := GroupId(c.Id).String()
+	exists, err := s.groupExists(chatId)
 	if err != nil {
 		return err
 	}
@@ -42,7 +43,7 @@ func (s *State) RememberGroup(c telegram.Chat) (err error) {
 	ctx := context.Background()
 
 	query := `INSERT INTO groups (id, name) VALUES ($1, $2)`
-	_, err = s.db.Exec(ctx, query, c.Id, c.Title)
+	_, err = s.db.Exec(ctx, query, chatId, c.Title)
 
 	return err
 }
@@ -63,7 +64,7 @@ func (s *State) ForgetGroup(c telegram.Chat) (err error) {
 // Remember that user is member of specified group
 // Note that method is idempotent
 func (s *State) RememberMember(groupId GroupId, username string, tags []string) (err error) {
-	exists, err := s.groupExists(groupId)
+	exists, err := s.groupExists(groupId.String())
 	if err != nil {
 		return err
 	}
@@ -127,7 +128,7 @@ func (id GroupId) String() string {
 }
 
 func (s State) GetKnownMembers(groupId GroupId, tags []string) ([]string, error) {
-	exists, err := s.groupExists(groupId)
+	exists, err := s.groupExists(groupId.String())
 	if err != nil {
 		return nil, err
 	}
@@ -230,11 +231,11 @@ func (s *State) ListGroupMembers(groupId GroupId, tags []string) (GroupList, err
 	return result, nil
 }
 
-func (s *State) groupExists(groupId GroupId) (bool, error) {
+func (s *State) groupExists(groupId string) (bool, error) {
 	ctx := context.Background()
 	query := `SELECT id FROM groups WHERE id = $1 LIMIT 1`
 
-	rows, err := s.db.Query(ctx, query, groupId.String())
+	rows, err := s.db.Query(ctx, query, groupId)
 	if err != nil {
 		return false, err
 	}
