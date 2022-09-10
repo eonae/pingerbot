@@ -21,4 +21,15 @@ migrate:
 
 revert:
 	export $$(cat .env) && migrate -path migrations -database "$$DB_CONNECTION" down
-	
+
+docker-build:
+	docker image rm -f pingerbot
+	docker build --tag pingerbot .
+
+docker-run:
+	docker rm -f pingerbot
+	docker run --name pingerbot --env-file=.env pingerbot
+
+docker-clean-run:
+	make docker-build
+	make docker-run
