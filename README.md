@@ -115,6 +115,60 @@ Commands **/remove** and **/removeme** are just opposite to /add and /addme and 
 > **/remove** _@vince_ _#backend_
 
 ___
+## Development
+
+### Requirements
+- Go 1.18+
+- [Task](https://taskfile.dev/) - `brew install go-task`
+- Docker & Docker Compose
+- [golang-migrate](https://github.com/golang-migrate/migrate) (for migrations)
+
+### Quick start
+
+```bash
+# 1. Copy and configure environment
+cp .env.example .env
+# Edit .env and set BOT_TOKEN
+
+# 2. Start infrastructure (PostgreSQL)
+task infra:up
+
+# 3. Run migrations
+task migrate
+
+# 4. Start the bot
+task start
+```
+
+### Docker Compose
+
+```bash
+# Start everything
+task up
+
+# View logs
+task logs
+
+# Stop everything
+task down
+```
+
+### Available commands
+
+| Command | Description |
+|---------|-------------|
+| `task start` | Run locally (dev mode) |
+| `task build` | Build binary |
+| `task lint` | Run linter |
+| `task migrate` | Apply migrations |
+| `task revert` | Revert migrations |
+| `task infra:up` | Start PostgreSQL |
+| `task infra:down` | Stop PostgreSQL |
+| `task up` | Start all services |
+| `task down` | Stop all services |
+| `task clean` | Remove containers and volumes |
+
+___
 ## TODO
 
 - [x] Basic long polling
@@ -125,10 +179,10 @@ ___
 - [x] Implement /add and /addme
 - [x] Enable privacy mode
 - [x] Implement tags/topics (#backend,#frontend)
-- [ ] CI/CD (not sure how exactly yet)
+- [x] CI/CD (GitHub Actions)
+- [x] Linters (golangci-lint)
 - [ ] Monitoring with grafana and maybe prometheus
 - [ ] Process each chat concurrently
 - [ ] Unit tests
-- [ ] Linters (golangci-lint)
 - [ ] Nice docs page
 - [ ] Webhooks

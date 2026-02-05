@@ -1,0 +1,37 @@
+services:
+  migrate:
+    image: migrate/migrate:latest
+    container_name: pingerbot-migrate
+    volumes:
+      - ../migrations:/migrations:ro
+    command:
+      - -path=/migrations
+      - -database=postgres://${POSTGRES_USER:-pingerbot}:${POSTGRES_PASSWORD:-pingerbot}@pingerbot-postgres:5432/${POSTGRES_DB:-pingerbot}?sslmode=disable
+      - up
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - pingerbot-network
+
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: pingerbot-app
+    environment:
+      BOT_TOKEN: ${BOT_TOKEN}
+      LONG_POLLING_TIMEOUT: ${LONG_POLLING_TIMEOUT:-30s}
+      DB_CONNECTION: postgres://${POSTGRES_USER:-pingerbot}:${POSTGRES_PASSWORD:-pingerbot}@pingerbot-postgres:5432/${POSTGRES_DB:-pingerbot}?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    networks:
+      - pingerbot-network
+
+networks:
+  pingerbot-network:
+    name: pingerbot-network

@@ -1,0 +1,126 @@
+version: '3'
+
+dotenv: ['.env']
+
+vars:
+  POSTGRES_USER: '{{.POSTGRES_USER | default "pingerbot"}}'
+  POSTGRES_PASSWORD: '{{.POSTGRES_PASSWORD | default "pingerbot"}}'
+  POSTGRES_DB: '{{.POSTGRES_DB | default "pingerbot"}}'
+  POSTGRES_PORT: '{{.POSTGRES_PORT | default "5447"}}'
+  DB_CONNECTION: postgres://{{.POSTGRES_USER}}:{{.POSTGRES_PASSWORD}}@localhost:{{.POSTGRES_PORT}}/{{.POSTGRES_DB}}?sslmode=disable
+
+tasks:
+  # === Development ===
+  start:
+    desc: Run the bot locally (dev mode)
+    env:
+      DB_CONNECTION: "{{.DB_CONNECTION}}"
+    cmds:
+      - go run cmd/main.go
+
+  build:
+    desc: Build the binary
+    cmds:
+      - rm -rf build
+      - go build -o build/pingerbot cmd/main.go
+
+  start-built:
+    desc: Run the built binary
+    deps: [build]
+    env:
+      DB_CONNECTION: "{{.DB_CONNECTION}}"
+    cmds:
+      - ./build/pingerbot
+
+  lint:
+    desc: Run golangci-lint
+    cmds:
+      - golangci-lint run
+
+  # === Migrations ===
+  mig:add:
+    desc: Create a new migration (usage -- task add-migration -- name_of_migration)
+    cmds:
+      - migrate create -ext sql -dir migrations {{.CLI_ARGS}}
+
+  mig:
+    desc: Apply all migrations
+    cmds:
+      - migrate -path migrations -database "{{.DB_CONNECTION}}" up
+
+  mig:revert:
+    desc: Revert last migration
+    cmds:
+      - migrate -path migrations -database "{{.DB_CONNECTION}}" down
+
+  # === Infrastructure (Docker Compose) ===
+  infra:up:
+    desc: Start infrastructure (PostgreSQL)
+    cmds:
+      - docker compose -f .docker/infra.compose.yaml up -d
+
+  infra:down:
+    desc: Stop infrastructure
+    cmds:
+      - docker compose -f .docker/infra.compose.yaml down
+
+  infra:logs:
+    desc: Show infrastructure logs
+    cmds:
+      - docker compose -f .docker/infra.compose.yaml logs -f
+
+  # === Application (Docker Compose) ===
+  app:up:
+    desc: Start the application container
+    cmds:
+      - docker compose -f .docker/infra.compose.yaml -f .docker/app.compose.yaml up -d app
+
+  app:down:
+    desc: Stop the application container
+    cmds:
+      - docker compose -f .docker/infra.compose.yaml -f .docker/app.compose.yaml down app
+
+  app:build:
+    desc: Rebuild the application container
+    cmds:
+      - docker compose -f .docker/infra.compose.yaml -f .docker/app.compose.yaml build app
+
+  app:logs:
+    desc: Show application logs
+    cmds:
+      - docker compose -f .docker/infra.compose.yaml -f .docker/app.compose.yaml logs -f app
+
+  # === Full Stack ===
+  up:
+    desc: Start everything (infra + app)
+    cmds:
+      - docker compose -f .docker/infra.compose.yaml -f .docker/app.compose.yaml up -d
+
+  down:
+    desc: Stop everything
+    cmds:
+      - docker compose -f .docker/infra.compose.yaml -f .docker/app.compose.yaml down
+
+  logs:
+    desc: Show all logs
+    cmds:
+      - docker compose -f .docker/infra.compose.yaml -f .docker/app.compose.yaml logs -f
+
+  rebuild:
+    desc: Rebuild and restart everything
+    cmds:
+      - docker compose -f .docker/infra.compose.yaml -f .docker/app.compose.yaml up -d --build
+
+  # === Legacy Docker commands (standalone) ===
+  docker:build:
+    desc: Build docker image (standalone)
+    cmds:
+      - docker image rm -f pingerbot || true
+      - docker build --tag pingerbot .
+
+  # === Cleanup ===
+  clean:
+    desc: Remove all containers and volumes
+    cmds:
+      - docker compose -f .docker/infra.compose.yaml -f .docker/app.compose.yaml down -v
+      - rm -rf build

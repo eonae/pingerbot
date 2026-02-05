@@ -1,0 +1,26 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: pingerbot-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pingerbot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pingerbot}
+      POSTGRES_DB: ${POSTGRES_DB:-pingerbot}
+    ports:
+      - "${POSTGRES_PORT:-5447}:5432"
+    volumes:
+      - pingerbot-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pingerbot} -d ${POSTGRES_DB:-pingerbot}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pingerbot-network
+
+volumes:
+  pingerbot-postgres-data:
+
+networks:
+  pingerbot-network:
+    name: pingerbot-network
